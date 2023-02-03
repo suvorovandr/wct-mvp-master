@@ -1,49 +1,75 @@
 ## Author: Andrey Suvorov
-## Date: 15/01/2023
+## Date: 03/02/2023
 import sqlite3 as sql
 import requests
-from bs4 import BeautifulSoup
 import csv
 import os.path
-from win32.win32api import MessageBox
-import time
 
 
 store_domain = "https://www.mechta.kz/api/v1/product/"
+catalog_link = "https://www.mechta.kz/api/v1/catalog?section=smartfony&page=1&properties=&page_limit=24&cache_city=s1"
 
-con = sql.connect('region.db')
+
+
+def db_check():
+    if os.path.exists("region.db"):
+        os.remove("region.db")
+def db_create():
+    con = sql.connect('region.db')
+    with con:
+        con.execute("""
+        CREATE TABLE USER (
+            region TEXT,
+            client TEXT,
+            link STRING PRIMARY KEY); """)
+    con.commit()
+def db_write_data(full_link_attribut):
+    con = sql.connect('region.db')
+    cursor = con.cursor()
+    cursor.execute(("""
+        INSERT or REPLACE INTO USER (region, client, link) 
+        VALUES 
+        (?, ?, ?)
+        """), ("KZ", "mechta", full_link_attribut))
+    con.commit()
+    cursor.close()
+
+
+def get_links_to_db():
+    db_check()
+    db_create()
+    get_catalog_jsons = requests.get(catalog_link)
+    json = get_catalog_jsons.json()
+    device_count = json['data'].get('all_items_count')
+    print("All need to parse: "+ str(device_count) + " devices")
+    page_count = json['data'].get('page_items_count')
+    device_sum = 0
+    for i in range(page_count + 1):
+        catalog_link_auto = "https://www.mechta.kz/api/v1/catalog?section=smartfony&page="+str(i)+"&properties=&page_limit="+str(page_count)+"&cache_city=s1"
+        items_json = requests.get(catalog_link_auto).json()
+        device_code = items_json['data'].get('items')
+        for i in range(len(device_code)):
+            link_attribut = device_code[i]['code']
+            full_link_attribut = "https://www.mechta.kz/product/" + link_attribut
+            db_write_data(full_link_attribut)
+            ## print(type(device_code[i]))
+            ##for i, code in enumerate(items_dic):
+                    ##code[i] = items_dic[0]
+                   ## print(code['code'])
+            device_sum = device_sum + 1
+    print(device_sum)
 
 print("Welcome to use Honor WCT Kazakhstan prototype")
 print("Author: Andrey Suvorov (C) Honor Devices")
 
-
-if os.path.isfile('region.db'):
-
-    print ("Database file exist")
-    time.sleep(2)
-else:
-    print ("Database File does not exist")
-    input("press enter to exit")
-    ##con = sql.connect('region.db')
-    ##with con:
-     ##   con.execute("""
-     ##   CREATE TABLE USER (
-     ##       region TEXT,
-     ##       client TEXT,
-    ##        link STRING PRIMARY KEY); """)
-   ## con.commit()
-
-
 def selectdata():
+    con = sql.connect('region.db')
     cursor = con.cursor()
     cursor.execute('SELECT link FROM USER WHERE region = "KZ" AND client = "mechta"')
     row = cursor.fetchall()
     for i, rows in enumerate(row):
         row[i] = rows[0]
     return row
-
-
-
 
 def parse_page(addr_list):
     print("Selected region: KZ")
@@ -99,17 +125,9 @@ headers_list = ["Device name", "Base price", "Discout", 'Bonus', "Gift_Details",
 with open ('price_monitoring.csv', 'a', newline = '', encoding='utf-8') as outfile:
     writer = csv.writer(outfile)
     writer.writerow(headers_list)
+    get_links_to_db()
     parse_page(selectdata())
 input()
-## parse_page(addr_list=["https://www.mechta.kz/product/telefon-sotovyy-vivo-y16-332gb-stellar-black-2204/", "https://www.mechta.kz/product/telefon-sotovyy-vivo-y16-332gb-stellar-black-2204/"])
-        ## return(data)
-        ## json_to_csv(data)
-## parse_page(addr_list=["https://www.mechta.kz/product/telefon-sotovyy-xiaomi-redmi-note-11-pro-8128gb-graphite-gray/", "https://www.mechta.kz/product/telefon-sotovyy-honor-x6-464gb-midnight-black/"])
-
-
-
-## price = jsonDic.get('price')
-## price_mindbox = data_mindbox.get('prices')
 
 
 
