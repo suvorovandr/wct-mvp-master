@@ -1,5 +1,5 @@
 ## Author: Andrey Suvorov
-## Date: 03/02/2023
+## Date: 06/02/2023
 import sqlite3 as sql
 import requests
 import csv
@@ -47,6 +47,7 @@ def get_links_to_db():
     json = get_catalog_jsons.json()
     ## device_count = json['data'].get('all_items_count')
     page_count = json['data'].get('page_items_count')
+    print("Getting Client catalog...")
     for i in range(1, page_count + 1):
         ##print("page: " + str(i))
         catalog_link_auto = "https://www.mechta.kz/api/v1/catalog?section=smartfony&page="+str(i)+"&properties=&page_limit="+str(page_count)+"&cache_city=s1"
@@ -72,15 +73,15 @@ def selectdata():
     con = sql.connect('region.db')
     cursor = con.cursor()
     cursor.execute('SELECT link FROM USER WHERE region = "KZ" AND client = "mechta"')
+    print("Selected region: KZ")
+    print("Selected client: Mechta.kz")
     row = cursor.fetchall()
-    print(len(row))
+    print("Detected devices: " + str(len(row)))
     for i, rows in enumerate(row):
         row[i] = rows[0]
     return row
 
 def parse_page(addr_list):
-    print("Selected region: KZ")
-    print("Selected client: Mechta.kz")
     parse_index = 0
     for default_addr in addr_list:
         parse_index += 1
